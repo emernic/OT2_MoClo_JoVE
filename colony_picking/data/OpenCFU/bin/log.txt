@@ -1,0 +1,15 @@
+OpenCFU options:
+-h = print this help
+-v = print the version number
+-a = set the auto-threshold ON. It overrides the argument -t
+-i FILE : the name of the input image file
+-m [FILE | auto]  :the name of the mask image file or the keyword `auto'
+-d {reg,inv,bil} : The type of threshold: regular, inverted or bilateral (the default value `reg')
+-t NUM :set the threshold (the default value is 10)
+-l NUM : set a threshold for outlier exclusion(the default value is 10)
+-r NUM : set the minimal radius (the default value is 3)
+-R NUM : set a maximal radius
+-c NUM : set a "center" value of the Hue/Colour threshold
+-C NUM : set a "tolerance" value of the Hue/Colour threshold
+-G NUM : set a "coarseness" value for the density based scanner
+
