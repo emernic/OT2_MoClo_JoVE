@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageChops, ImageEnhance
 import math
 import yaml
 
+
 #################################################################################################################
 # Constants
 #################################################################################################################
@@ -26,12 +27,16 @@ def main():
 	###### GETTING USER INPUT ######
 	config = get_config(CONFIG_PATH)
 
-	image_filenames = get_image_filenames(config['image_folder_path'])
-	mask_filenames = get_mask_filenames(config['mask_folder_path'])
-	background_filenames = get_background_filenames(config['background_folder_path'])
-
+	# User provided input at runtime.
 	num_plates = ask_num_plates()
 	source_plate_filenames = ask_source_plate_filenames(num_plates)
+
+	# Calculate number of images to fetch from folder.
+	plates_per_image = len(config['plate_locations'])
+	num_images = int(num_plates // plates_per_image) + (num_plates % plates_per_image > 0)
+	image_filenames = get_image_filenames(config['image_folder_path'], num_images)
+	
+	background_filenames = get_background_filenames(config['background_folder_path'])
 
 
 	###### PRE-PROCESSING IMAGES ######
@@ -44,25 +49,37 @@ def main():
 		contrast=config['contrast'],
 		background_filenames=background_filenames)
 
+
+	###### COLONY IDENTIFICATION ######
 	plates = generate_plates(preprocessed_image_filenames, source_plate_filenames, num_plates, config['plate_locations'])
 
-	transformed_mask_filenames = transform_masks(plates, mask_filenames, config['temp_folder_path'], config['rotate'])
+	# Run OpenCFU for each image.
+	opencfu_outputs = run_opencfu(config['opencfu_folder_path'], preprocessed_image_filenames, config['opencfu_arg_string'])
 
+	# Draw colony location previews for each image.
+	if config['draw_previews']:
+		draw_previews(opencfu_outputs, config['temp_folder_path'])
 
-	###### LOCATING COLONIES WITH OPENCFU ######
-	culture_blocks_dict = locate_colonies(
-		plates,
-		config['calibration_point_location'],
-		transformed_mask_filenames,
-		config['temp_folder_path'],
-		config['opencfu_folder_path'],
-		config['opencfu_arg_string'],
-		config['colonies_to_pick'],
-		config['pixels_per_mm'],
-		config['block_columns'],
-		config['block_rows'],
-		rotate=config['rotate'])
+	# Convert pixel coordinates to mm in coordinate system of each plate.
+	for plate in plates:
+		opencfu_output = opencfu_outputs[plate['image_filename']]
+		plate_location = plate['location_in_image']
+		plate_origin = config['calibration_point_location']
+		plate['colony_locations'] = get_relative_locations(
+			opencfu_output, 
+			plate_location, 
+			config['rotate'], 
+			config['pixels_per_mm'],
+			plate_origin)
 
+	# Selects appropriate colonies for each plasmid based on colony_regions in settings.yaml.
+	# Populates a culture block dictonary with these locations. TODO
+	culture_blocks_dict = pick_colonies(
+		plates, 
+		config['colony_regions'], 
+		config['colonies_to_pick'], 
+		config['block_rows'], 
+		config['block_columns'])
 
 	###### CREATING OUTPUT BLOCK MAPS AND PROTOCOL FILE ######
 	create_block_maps(culture_blocks_dict, config['output_folder_path'])
@@ -100,11 +117,11 @@ def get_config(config_path):
 
 	return config
 
-def get_image_filenames(image_folder_path):
+def get_image_filenames(image_folder_path, num_images):
 	# Get all images from folder and sort by creation time.
 	image_filenames = [(image_folder_path + '/' + image_name) for image_name in os.listdir(image_folder_path)]
 	image_filenames.sort(key=lambda x: os.path.getmtime(x))
-	return image_filenames
+	return image_filenames[-num_images:]
 
 def get_mask_filenames(mask_folder_path):
 	return [(mask_folder_path + '/' + mask_name) for mask_name in os.listdir(mask_folder_path)]
@@ -173,52 +190,14 @@ def preprocess_images(image_filenames, temp_folder_path, inverted=False, blur_ra
 
 		# Save in temporary folder.
 		preprocessed_image_filename = temp_folder_path + '/' + os.path.basename(image_filename)
-		image.save(preprocessed_image_filename)
 
-		preprocessed_image_filenames.append(preprocessed_image_filename)
+		# Absolute filenames are important for opencfu step.
+		absolute_filename = os.path.abspath(preprocessed_image_filename)
+		image.save(absolute_filename)
+
+		preprocessed_image_filenames.append(absolute_filename)
 
 	return preprocessed_image_filenames
-
-# Used to rotate and scale image masks correctly onto the image.
-def transform_image(image, angle = 0.0, center = (0.0, 0.0), new_center = (0.0, 0.0), scale = (1.0, 1.0)):
-        angle = -angle / 180.0 * math.pi
-        (x, y) = center
-        (nx, ny) = new_center
-        (sx, sy) = scale
-        cosine = math.cos(angle)
-        sine = math.sin(angle)
-        a = cosine / sx
-        b = sine / sx
-        c = x - nx * a - ny * b
-        d = -sine / sy
-        e = cosine / sy
-        f = y - nx * d - ny * e
-        return image.transform(image.size, Image.AFFINE, (a,b,c,d,e,f), resample=Image.BICUBIC)
-
-def transform_mask(mask_filename, plate, temp_folder_path, rotate):
-	image = Image.open(plate['image_filename'])
-	image_width, image_height = image.size
-
-	# Make the mask the same size as the image and transform to correct position in plate.
-	mask = Image.open(mask_filename)
-	mask = mask.crop((0, 0, image_width, image_height))
-	mask = transform_image(mask, angle=-rotate, new_center=(plate['location_in_image']['x'], plate['location_in_image']['y']))
-
-	# Save the adjusted mask as a temporary file.
-	image_basename = os.path.splitext(os.path.basename(plate['image_filename']))[0]
-	transformed_mask_filename = temp_folder_path + '/' + image_basename + os.path.basename(mask_filename)
-	transformed_mask_filename = os.path.abspath(transformed_mask_filename)
-	mask.save(transformed_mask_filename)
-
-	return transformed_mask_filename
-
-def transform_masks(plates, mask_filenames, temp_folder_path, rotate):
-	transformed_mask_filenames = []
-	for plate in plates:
-		for mask_filename in mask_filenames:
-			transformed_mask_filenames.append(transform_mask(mask_filename, plate, temp_folder_path, rotate))
-
-	return transformed_mask_filenames
 
 
 #################################################################################################################
@@ -229,7 +208,6 @@ def transform_masks(plates, mask_filenames, temp_folder_path, rotate):
 def generate_plates(preprocessed_image_filenames, source_plate_filenames, num_plates, plate_locations):
 	
 	plates_per_image = len(plate_locations)
-	#num_images = int(num_plates // plates_per_image) + (num_plates % plates_per_image > 0)
 
 	plates = []
 	plate_index = 0
@@ -245,25 +223,27 @@ def generate_plates(preprocessed_image_filenames, source_plate_filenames, num_pl
 
 	return plates
 
-# Run opencfu for this section of the agar plate and return an iterable reader of output.
-def run_opencfu(opencfu_folder_path, image_filename, mask_filename, arg_string):
-	shell_command = 'cd "{0}" && opencfu -i "{1}" -m "{2}" {3}'.format(opencfu_folder_path, image_filename, mask_filename, arg_string)
-	raw_opencfu_output = subprocess.check_output(args = shell_command, shell = True)
-	f = StringIO(raw_opencfu_output.decode("utf-8"))
-	return csv.DictReader(f, delimiter = ',')
+# Run opencfu for an image and return the result as a dictionary keyed by image filenames.
+def run_opencfu(opencfu_folder_path, image_filenames, arg_string):
+	opencfu_outputs = {}
+	for image_filename in image_filenames:
+		shell_command = 'cd "{0}" && opencfu -i "{1}" {2}'.format(opencfu_folder_path, image_filename, arg_string)
+		raw_opencfu_output = subprocess.check_output(args = shell_command, shell = True)
+		f = StringIO(raw_opencfu_output.decode("utf-8"))
+		opencfu_outputs[image_filename] = list(csv.DictReader(f, delimiter = ','))
 
-# Make a list of colony coordinates (in image pixels and in mm from plate origin) from opencfu output.
-def make_colony_list(reader, plate, calibration_point_location, pixels_per_mm, rotate):
-	colony_list = []
-	for row in reader:
+	return opencfu_outputs
+
+# Converts OpenCFU output (locations in px coordinates) into mm coordinates relative to origin.
+def get_relative_locations(opencfu_output, plate_location, rotate, pixels_per_mm, plate_origin):
+	relative_locations = []
+	for row in opencfu_output:
 		if row['IsValid'] == '1':
 			x = float(row['X'])
 			y = float(row['Y'])
 
-			# Colony coordinates are still in pixels relative to the corner of the image, we need them in mm relative
-			# to their locations in each plate.
-			translated_x = x - plate['location_in_image']['x']
-			translated_y = y - plate['location_in_image']['y']
+			translated_x = x - plate_location['x']
+			translated_y = y - plate_location['y']
 			cosine = math.cos(-rotate)
 			sine = math.sin(-rotate)
 			rotated_x = translated_x*cosine - translated_y*sine
@@ -271,34 +251,35 @@ def make_colony_list(reader, plate, calibration_point_location, pixels_per_mm, r
 			mm_x = rotated_x / pixels_per_mm
 			mm_y = rotated_y / pixels_per_mm
 
-			# Lastly, convert from "mm away from upper left corner of plate" (with down being positive y) 
-			# to "mm away from the leftmost crossing plastic divisions in the plate" (with up being positive y)
-			# because this is how positions are understood by the robot.
-			final_x = mm_x - calibration_point_location['x']
-			final_y = calibration_point_location['y'] - mm_y
-			colony_list.append({'x': final_x, 'y': final_y, 'x_in_image': x, 'y_in_image': y})
+			adjusted_x = mm_x - plate_origin['x']
+			adjusted_y = mm_y - plate_origin['y']
 
-	return colony_list
+			relative_locations.append({'x': adjusted_x, 'y': adjusted_y})
 
-# Draws a list of colony locations onto a preview file.
-def draw_colony_list(colony_list, original_filename, preview_filename):
+	return relative_locations
 
-	# Create preview image of colony picking
-	original = Image.open(original_filename)
-	im = original.copy()
-	draw = ImageDraw.Draw(im)
+# Intakes a list of opencfu outputs (DictReaders) keyed by image filename and draws previews to temp_folder_path.
+def draw_previews(opencfu_outputs, preview_path):
+	for image_filename, opencfu_output in opencfu_outputs.items():
+		# Create preview image of colony picking
+		original = Image.open(image_filename)
+		im = original.copy()
+		draw = ImageDraw.Draw(im)
 
-	for colony in colony_list:
-		x = colony['x_in_image']
-		y = colony['y_in_image']
-		# draw point on image preview
-		draw.ellipse((x-4, y-4, x+4, y+4), outline = (255, 0, 0, 255))
+		for row in opencfu_output:
+			x = float(row['X'])
+			y = float(row['Y'])
+			if row['IsValid'] == '1':
+				draw.ellipse((x-4, y-4, x+4, y+4), outline = (0, 255, 0, 255))
+			else:
+				draw.ellipse((x-4, y-4, x+4, y+4), outline = (255, 0, 0, 255))
 
-	# Save image preview
-	im.save(preview_filename)
+		preview_filename = preview_path + '/preview_' + os.path.basename(image_filename)
+		# Save image preview
+		im.save(preview_filename)
 
+# Find the minimum distance from other colonies for each colony
 def measure_colony_distances(colony_list):
-	# Find the minimum distance from other colonies for each colony
 	colonies_with_distances = []
 	for colony_1 in colony_list:
 		colonies_with_distances.append(colony_1)
@@ -311,17 +292,44 @@ def measure_colony_distances(colony_list):
 
 	return colonies_with_distances
 
-def get_plasmid_name(source_plate_filename, transformed_mask_filename):
+# Gets plasmid name from user-provided plate map file.
+def get_plasmid_name(source_plate_filename, row, column):
 	# Get name of the plasmid by reading user-supplied plate map.
 	with open(source_plate_filename, newline='', encoding="utf-8-sig") as csvfile:
 		csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
-		mask_base_filename = os.path.splitext(os.path.basename(transformed_mask_filename))[0]
-		alphanum = mask_base_filename.split("_")[-1]
-		mask_row = ord(alphanum[0].lower())-97
-		mask_col = int(alphanum[1:]) - 1
-		plasmid_name = list(csvreader)[mask_row][mask_col]
+		try:
+			plasmid_name = list(csvreader)[row][column]
+		except:
+			plasmid_name = ''
 
 	return plasmid_name
+
+# Returns a list of only the colonies which are inside colony region i, j.
+def get_colonies_in_region(colony_locations, colony_regions, i, j):
+	colonies_in_region = []
+
+	if colony_regions['type'] == 'circle':
+		for colony in colony_locations:
+			target_x = colony_regions['x'] + j*colony_regions['x_spacing']
+			target_y = colony_regions['y'] + i*colony_regions['y_spacing']
+			delta_x = colony['x'] - target_x
+			delta_y = colony['y'] - target_y
+			if (delta_x**2 + delta_y**2)**0.5 < colony_regions['r']:
+				colonies_in_region.append(colony)
+
+	elif colony_regions['type'] == 'rectangle':
+		for colony in colony_locations:
+			x_min = colony_regions['x_1'] + j*colony_regions['x_spacing']
+			x_max = colony_regions['x_2'] + j*colony_regions['x_spacing']
+			y_min = colony_regions['y_1'] + i*colony_regions['y_spacing']
+			y_max = colony_regions['y_2'] + i*colony_regions['y_spacing']
+			if colony['x'] > x_min and colony['x'] < x_max and colony['y'] > y_min and colony['y'] < y_max:
+				colonies_in_region.append(colony)
+
+	else:
+		raise ValueError('Invalid colony_regions type: {0}'.format(colony_regions['type']))
+	
+	return colonies_in_region
 
 # Output of this function is a dict of output culture blocks. Each culture block is represented by a list of lists. 
 # Each entry contains the name of the plasmid ('name'), the agar plate it came from ('source'), and the x y position
@@ -349,7 +357,7 @@ def get_plasmid_name(source_plate_filename, transformed_mask_filename):
 # 		]
 # 	],
 # }
-def locate_colonies(plates, calibration_point_location, transformed_mask_filenames, temp_folder_path, opencfu_folder_path, opencfu_arg_string, colonies_to_pick, pixels_per_mm, block_columns, block_rows, rotate=0.0):
+def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_columns):
 	# Tracking output block number, row, and column.
 	n = 0
 	i = 0
@@ -359,52 +367,40 @@ def locate_colonies(plates, calibration_point_location, transformed_mask_filenam
 	culture_blocks_dict['culture_block_0'].append([])
 
 	for plate in plates:
+		for row in range(0, colony_regions['rows']):
+			for col in range(0, colony_regions['columns']):
+				
+				plasmid_name = get_plasmid_name(plate['source_plate_filename'], row, col)
 
-		source_plate_filename = plate['source_plate_filename']
+				if plasmid_name:
+					colonies = get_colonies_in_region(plate['colony_locations'], colony_regions, row, col)
+					colonies_with_distances = measure_colony_distances(colonies)
+					sorted_colonies = sorted(colonies_with_distances, key=lambda c: c['dist'], reverse=True)
+					selected_colonies = sorted_colonies[:colonies_to_pick]
 
-		for transformed_mask_filename in transformed_mask_filenames:
+					for colony in selected_colonies:
+						culture_blocks_dict['culture_block_{0}'.format(n)][i].append({
+							'name': plasmid_name, 
+							'source': '{0}'.format(os.path.splitext(os.path.basename(plate['source_plate_filename']))[0]), 
+							'x': colony['x'],
+							'y': colony['y']
+						})
 
-			reader = run_opencfu(opencfu_folder_path, os.path.abspath(plate['image_filename']), transformed_mask_filename, opencfu_arg_string)
-
-			colony_list = make_colony_list(reader, plate, calibration_point_location, pixels_per_mm, rotate)
-
-			mask_base_filename = os.path.splitext(os.path.basename(transformed_mask_filename))[0]
-			mask_abbreviation = mask_base_filename.split("_")[-1]
-			image_base_filename = os.path.splitext(os.path.basename(plate['image_filename']))[0]
-			preview_filename = temp_folder_path + '/' + image_base_filename + '_{0}_preview.png'.format(mask_abbreviation)
-			draw_colony_list(colony_list, plate['image_filename'], preview_filename)
-
-			colonies_with_distances = measure_colony_distances(colony_list)
-
-			sorted_colonies_with_distances = sorted(colonies_with_distances, key=lambda x: x['dist'], reverse=True)
-
-			plasmid_name = get_plasmid_name(source_plate_filename, transformed_mask_filename)
-
-			selected_colonies = sorted_colonies_with_distances[:colonies_to_pick]
-
-			if plasmid_name:
-				for colony in selected_colonies:
-					culture_blocks_dict['culture_block_{0}'.format(n)][i].append({
-						'name': plasmid_name, 
-						'source': 'plate_{0}'.format(os.path.splitext(os.path.basename(source_plate_filename))[0]), 
-						'x': colony['x'],
-						'y': colony['y']
-					})
-
-					if j == block_columns:
-						if i == block_rows:
-							n += 1
-							i = 0
-							culture_blocks_dict['culture_block_{0}'.format(n)] = []
+						if j == block_columns:
+							if i == block_rows:
+								n += 1
+								i = 0
+								culture_blocks_dict['culture_block_{0}'.format(n)] = []
+							else:
+								i += 1
+							j = 0
+							culture_blocks_dict['culture_block_{0}'.format(n)].append([])
 						else:
-							i += 1
-						j = 0
-						culture_blocks_dict['culture_block_{0}'.format(n)].append([])
-					else:
-						j += 1
+							j += 1
 
 	return culture_blocks_dict
 
+# Deletes all files in folder.
 def delete_temp_files(temp_folder_path):
 	temp_files = [file for file in os.listdir(temp_folder_path)]
 	for file in temp_files:
