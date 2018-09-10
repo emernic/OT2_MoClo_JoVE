@@ -17,10 +17,8 @@ opencfu_arg_string: -t 1 -r 2 -R 6 -d inv
 opencfu_folder_path: data/OpenCFU/bin
 output_folder_path: C:/Users/nicke/Desktop
 pixels_per_mm: 4.023
-plate_columns: 4
 plate_locations:
 - {x: 683.0, y: 119.0}
-plate_rows: 2
 protocol_template_path: data/colony_pick_template.py
 rotate: 89.5
 temp_folder_path: data/temp
