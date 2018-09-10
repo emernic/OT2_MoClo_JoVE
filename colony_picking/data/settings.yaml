@@ -9,13 +9,13 @@ colony_regions: {columns: 10, r: 50, rows: 5, type: circle, x: 10, x_spacing: 10
   y_spacing: 10}
 contrast: 1.3
 draw_previews: true
-image_folder_path: D:/Docs/BU_Docs/OT2_MoClo_JoVE/colony_picking/images
+image_folder_path: false
 inverted: true
 keep_temp_files: true
 mask_folder_path: data/masks
 opencfu_arg_string: -t 1 -r 2 -R 6 -d inv
 opencfu_folder_path: data/OpenCFU/bin
-output_folder_path: C:/Users/nicke/Desktop
+output_folder_path: false
 pixels_per_mm: 4.023
 plate_locations:
 - {x: 683.0, y: 119.0}
