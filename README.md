@@ -1,5 +1,7 @@
 # Modular Cloning with the OT2
 
+**This project is still in active development and is not yet ready for use.**
+
 This project allows users to do end-to-end molecular cloning using the OT2 liquid handling robot by OpenTrons. This includes:
 - Performing modular cloning (Golden Gate) reactions.
 - Transforming into E. coli using heat shock.
