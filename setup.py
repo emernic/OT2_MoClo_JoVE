@@ -9,7 +9,7 @@ setup(name='ot2_moclo_jove',
       license='MIT',
       packages=['ot2_moclo_jove'],
       install_requires=[
-          'yaml',
+          'pyyaml',
           'Pillow'
       ],
       zip_safe=False)
