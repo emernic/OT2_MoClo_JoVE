@@ -73,7 +73,6 @@ def main():
 			plate_origin)
 
 	# Selects appropriate colonies for each plasmid based on colony_regions in settings.yaml.
-	# Populates a culture block dictonary with these locations. TODO
 	culture_blocks_dict = pick_colonies(
 		plates, 
 		config['colony_regions'], 
@@ -129,9 +128,6 @@ def get_image_filenames(image_folder_path, num_images):
 	image_filenames = [(image_folder_path + '/' + image_name) for image_name in os.listdir(image_folder_path)]
 	image_filenames.sort(key=lambda x: os.path.getmtime(x))
 	return image_filenames[-num_images:]
-
-def get_mask_filenames(mask_folder_path):
-	return [(mask_folder_path + '/' + mask_name) for mask_name in os.listdir(mask_folder_path)]
 
 def get_background_filenames(background_folder_path):
 	# Background image filenames (optional). If multiple are found they will be averaged.
