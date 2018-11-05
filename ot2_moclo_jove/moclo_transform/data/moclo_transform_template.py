@@ -135,7 +135,16 @@ for i in combinations_to_make:
 for part, combinations in combinations_by_part.items():
 	part_well = find_dna(part, dna_plate_map_dict, dna_plate_dict).bottom()
 	combination_wells = [find_combination(x, combinations_to_make).bottom() for x in combinations]
-	p10_single.distribute(2, part_well, combination_wells)
+	while combination_wells:
+		if len(combination_wells) > 5:
+			current_wells = combination_wells[0:5]
+			combination_wells = combination_wells[5:]
+		else:
+			current_wells = combination_wells
+			combination_wells = []
+		p10_single.aspirate(2 * len(current_wells), part_well.bottom())
+		for i in current_wells:
+			p10_single.dispense(2, i.bottom())
 
 for i in combinations_to_make:
 	num_parts = len(i["parts"])
@@ -196,12 +205,12 @@ p300_multi.drop_tip()
 
 def spread_culture(source, dest, lb, dilute_after=True):
 	p300_multi.mix(2, 150, source)
-	p300_multi.aspirate(30, source.bottom())
-	p300_multi.dispense(30, dest.top())
+	p300_multi.aspirate(10, source.bottom())
+	p300_multi.dispense(10, dest.top())
 	p300_multi.dispense(0, dest.bottom(-1))
 	if dilute_after:
-		p300_multi.transfer(100, source, liquid_waste, new_tip='never')
-		p300_multi.transfer(100, lb, source, new_tip='never')
+		p300_multi.transfer(120, source, liquid_waste, new_tip='never')
+		p300_multi.transfer(120, lb, source, new_tip='never')
 
 # Dilute and plate.
 for i in range(0, num_cols):
