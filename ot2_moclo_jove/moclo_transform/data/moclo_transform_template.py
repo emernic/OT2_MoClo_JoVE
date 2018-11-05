@@ -60,6 +60,7 @@ water = trough.wells(0)
 lb = trough.wells(1)
 wash_0 = trough.wells(2)
 wash_1 = trough.wells(3)
+liquid_waste = trough.wells(4)
 
 # Load in up to 2 DNA plates (96-PCR-flat)
 dna_plate_dict = {}
@@ -160,7 +161,7 @@ p300_multi.pick_up_tip()
 for i in range(0, num_cols):
 	# Split up if too many rxns for one tip
 	if i % 15 == 0 and not i == 0:
-		p300_multi.dispense(300, robot.fixed_trash)
+		p300_multi.dispense(300, liquid_waste)
 	p300_multi.aspirate(15, reaction_plate.wells(i*8).bottom())
 	p300_multi.air_gap(5)
 p300_multi.drop_tip()
@@ -199,7 +200,7 @@ def spread_culture(source, dest, lb, dilute_after=True):
 	p300_multi.dispense(30, dest.top())
 	p300_multi.dispense(0, dest.bottom(-1))
 	if dilute_after:
-		p300_multi.transfer(100, source, robot.fixed_trash, new_tip='never')
+		p300_multi.transfer(100, source, liquid_waste, new_tip='never')
 		p300_multi.transfer(100, lb, source, new_tip='never')
 
 # Dilute and plate.
