@@ -75,14 +75,16 @@ for i in range(0, num_plates):
 	agar_plates.append(labware.load('e-gelgol', available_deck_slots.pop(), 'Agar plate {0}'.format(i)))
 
 # Add water, buffer, restriction enzyme, ligase, and buffer to 2x master mix.
-mm_to_make = 10 * num_rxns + 5 * num_plates
+# Add extra space for dead volume.
+num_mm_wells = math.ceil(num_rxns * 10 / 190.0)
+mm_to_make = 10 * num_rxns + 10 * num_mm_wells
 mm_wells = []
 p10_single.pick_up_tip()
 well_in_plate = 95
 while mm_to_make > 0:
-	if mm_to_make > 300:
-		vol = 300
-		mm_to_make -= 300
+	if mm_to_make > 200:
+		vol = 200
+		mm_to_make -= 200
 	else:
 		vol = mm_to_make
 		mm_to_make = 0
@@ -97,12 +99,10 @@ p10_single.drop_tip()
 
 # Add master mix to each rxn
 p10_single.pick_up_tip()
+mm_well = 0
 for i in range(0, num_rxns):
-	if i < 24:
-		mm_well = mm_wells[0]
-	else:
-		mm_well = mm_wells[1]
-	p10_single.transfer(10, mm_well, reaction_plate.wells(i), new_tip='never')
+	mm_well = mm_wells[i // 19]
+	p10_single.transfer(10, mm_well.bottom(), reaction_plate.wells(i).bottom(), new_tip='never')
 p10_single.drop_tip()
 
 def find_dna(name, dna_plate_map_dict, dna_plate_dict):
@@ -184,7 +184,7 @@ p300_multi.drop_tip()
 # Add lb.
 p300_multi.pick_up_tip()
 for i in range(0, num_cols):
-	p300_multi.transfer(250, lb.bottom(), reaction_plate.wells(i*8).bottom(), mix_after=(2, 250), new_tip='never')
+	p300_multi.transfer(150, lb.bottom(), reaction_plate.wells(i*8).bottom(), mix_after=(2, 150), new_tip='never')
 	p300_multi.mix(2, 300, wash_0.bottom())
 	p300_multi.mix(2, 300, wash_1.bottom())
 p300_multi.drop_tip()
@@ -194,13 +194,13 @@ p300_multi.drop_tip()
 #p10_single.delay(minutes=60)
 
 def spread_culture(source, dest, lb, dilute_after=True):
-	p300_multi.mix(2, 250, source)
+	p300_multi.mix(2, 150, source)
 	p300_multi.aspirate(30, source.bottom())
 	p300_multi.dispense(30, dest.top())
 	p300_multi.dispense(0, dest.bottom(-1))
 	if dilute_after:
-		p300_multi.transfer(220, source, robot.fixed_trash, new_tip='never')
-		p300_multi.transfer(220, lb, source, new_tip='never')
+		p300_multi.transfer(100, source, robot.fixed_trash, new_tip='never')
+		p300_multi.transfer(100, lb, source, new_tip='never')
 
 # Dilute and plate.
 for i in range(0, num_cols):
@@ -209,8 +209,8 @@ for i in range(0, num_cols):
 	p300_multi.pick_up_tip()
 	source = reaction_plate.wells(i*8)
 	spread_culture(source, agar_plate.wells(agar_well_num), lb)
-	spread_culture(source, agar_plate.wells(agar_well_num), lb)
-	spread_culture(source, agar_plate.wells(agar_well_num), lb)
-	spread_culture(source, agar_plate.wells(agar_well_num), lb, dilute_after=False)
+	spread_culture(source, agar_plate.wells(agar_well_num + 8), lb)
+	spread_culture(source, agar_plate.wells(agar_well_num + 16), lb)
+	spread_culture(source, agar_plate.wells(agar_well_num + 24), lb, dilute_after=False)
 	p300_multi.drop_tip()
 
