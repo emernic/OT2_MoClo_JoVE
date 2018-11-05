@@ -15,9 +15,9 @@ All code for this project is freely distributed for academic and commercial uses
 
 1. Confirm that you have [Python 3](https://www.python.org/downloads/) installed.
 
-2. Install using pip. For example, by typing in the command line:
+2. Install from setup.py. For example, by typing in the command line while in the package folder:
 ~~~~
-python -m pip install ot2_moclo_jove
+python3 setup.py install
 ~~~~
 
 3. If using the colony picking module, install [OpenCFU](https://sourceforge.net/projects/opencfu/files/) (for Windows or Linux).
@@ -49,9 +49,9 @@ python -m pip install ot2_moclo_jove
 	- Selecting an output folder for the generated OT2 protocol and culture block map.
 	- Locating your OpenCFU installation folder (if not already set in settings.yaml)
 	- Entering the number of agar plates you would like to pick colonies for.
-	- Selecting input plate maps. You should select them in the same order you took the images (i.e. plate map 0 should correspond to the oldest image).
+	- Selecting input plate maps. You should select them in the same order you took the images (i.e. plate map 0 should correspond to the oldest image). Each plate map should be a CSV file of plasmid names for each culture spot on the input plate.
 
-3. 
+3. An output protocol should have been generated in the designated folder, as well as some previews images from the colony identification process (found in ot2_moclo_jove/colony_picking/data/temp) with colonies circled in green. Confirm that the output script is correct and then run it on the OT2.
 
 ## TODO:
 
