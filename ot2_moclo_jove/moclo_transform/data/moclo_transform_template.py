@@ -26,11 +26,8 @@ dna_plate_map_dict = {}
 dna_plate_map_dict["plate_0"] = gen_part_plate(0)
 dna_plate_map_dict["plate_1"] = gen_part_plate(96)
 
-print(combinations_to_make)
-print(dna_plate_map_dict)
-
-#combinations_to_make = [{"name": "final plasmid 1", "parts": ["vector a", "insert 1", "another insert"]}]
-#dna_plate_map_dict = {"dna plate 0": [["vector a", "insert 1", "another insert"]]}
+combinations_to_make = [{"name": "final plasmid 1", "parts": ["vector a", "insert 1", "another insert"]}]
+dna_plate_map_dict = {"dna plate 0": [["vector a", "insert 1", "another insert"]]}
 
 num_rxns = len(combinations_to_make)
 num_plates = math.ceil(num_rxns/24)
@@ -39,17 +36,17 @@ num_plates = math.ceil(num_rxns/24)
 temp_deck = modules.load('tempdeck', '10')
 reaction_plate = labware.load('96-PCR-flat', '10', share=True)
 
-available_deck_slots = ['11', '9', '8', '7', '6', '5', '4', '3', '2', '1']
+available_deck_slots = ['11', '8', '7', '5', '4', '2', '1']
 
 # Load in 1 10ul tiprack and 2 300ul tipracks
-tr_10 = [labware.load('tiprack-10ul', available_deck_slots.pop()), labware.load('tiprack-10ul', available_deck_slots.pop())]
+tr_10 = [labware.load('tiprack-10ul', '3'), labware.load('tiprack-10ul', '6')]
 tr_300 = []
 for i in range(0, 1):
-	tr_300.append(labware.load('tiprack-200ul', available_deck_slots.pop()))
+	tr_300.append(labware.load('tiprack-200ul', '9'))
 
 # Load in pipettes
-p10_single = instruments.P10_Single(mount='left', tip_racks=tr_10)
-p300_multi = instruments.P300_Multi(mount='right', tip_racks=tr_300)
+p10_single = instruments.P10_Single(mount='right', tip_racks=tr_10)
+p300_multi = instruments.P300_Multi(mount='left', tip_racks=tr_300)
 
 # Load in reagent tubes on cold block (PCR-strip-tall)
 reagents = labware.load('PCR-strip-tall', available_deck_slots.pop(), 'Reagent plate')
@@ -149,13 +146,13 @@ for i in combinations_to_make:
 	p10_single.transfer(water_to_add, water.bottom(), well.bottom(), mix_after=(4, 10))
 
 # Incubate rxns (moclo), periodically adding more water.
-temp_deck.set_temperature(37)
-p10_single.delay(minutes=120)
-temp_deck.set_temperature(50)
-p10_single.delay(minutes=5)
-temp_deck.set_temperature(80)
-p10_single.delay(minutes=10)
-temp_deck.set_temperature(4)
+#temp_deck.set_temperature(37)
+#p10_single.delay(minutes=120)
+#temp_deck.set_temperature(50)
+#p10_single.delay(minutes=5)
+#temp_deck.set_temperature(80)
+#p10_single.delay(minutes=10)
+#temp_deck.set_temperature(4)
 
 # Discard majority of rxn volume using multichannel.
 num_cols = math.ceil(num_rxns/8.0)
@@ -178,28 +175,28 @@ for i in range(0, num_cols):
 p300_multi.drop_tip()
 
 # Incubate at 4C, then heat shock.
-p10_single.delay(minutes=30)
-temp_deck.set_temperature(42)
-p10_single.delay(minutes=1)
-temp_deck.set_temperature(4)
-p10_single.delay(minutes=5)
+#p10_single.delay(minutes=30)
+#temp_deck.set_temperature(42)
+#p10_single.delay(minutes=1)
+#temp_deck.set_temperature(4)
+#p10_single.delay(minutes=5)
 
 # Add lb.
 p300_multi.pick_up_tip()
 for i in range(0, num_cols):
 	p300_multi.transfer(250, lb.bottom(), reaction_plate.wells(i*8).bottom(), mix_after=(2, 250), new_tip='never')
-	p300_multi.mix(300, 2, wash_0.bottom())
-	p300_multi.mix(300, 2, wash_1.bottom())
+	p300_multi.mix(2, 300, wash_0.bottom())
+	p300_multi.mix(2, 300, wash_1.bottom())
 p300_multi.drop_tip()
 
 # Grow for 1 hr, adding water/mixing if necessary.
-temp_deck.set_temperature(37)
-p10_single.delay(minutes=60)
+#temp_deck.set_temperature(37)
+#p10_single.delay(minutes=60)
 
 def spread_culture(source, dest, lb, dilute_after=True):
 	p300_multi.mix(2, 250, source)
 	p300_multi.aspirate(30, source.bottom())
-	p300_multi.dispense(30, dest.bottom())
+	p300_multi.dispense(30, dest.top())
 	p300_multi.dispense(0, dest.bottom(-1))
 	if dilute_after:
 		p300_multi.transfer(220, source, robot.fixed_trash, new_tip='never')
@@ -216,7 +213,4 @@ for i in range(0, num_cols):
 	spread_culture(source, agar_plate.wells(agar_well_num), lb)
 	spread_culture(source, agar_plate.wells(agar_well_num), lb, dilute_after=False)
 	p300_multi.drop_tip()
-
-from pprint import pprint
-pprint(robot.commands())
 
