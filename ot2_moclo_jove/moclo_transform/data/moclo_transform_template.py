@@ -67,7 +67,7 @@ for plate_name in dna_plate_map_dict.keys():
 	dna_plate_dict[plate_name] = labware.load('96-PCR-flat', available_deck_slots.pop(), plate_name)
 
 # Load in comp cell plate (96-PCR-flat)
-comp_cells = labware.load('96-PCR-flat', available_deck_slots.pop(), 'Competent cells')
+comp_cells = labware.load('96-flat', available_deck_slots.pop(), 'Competent cells')
 
 # Load in up to 2 agar plates, same antibiotic for all plasmids is assumed (e-gelgol)
 agar_plates = []
