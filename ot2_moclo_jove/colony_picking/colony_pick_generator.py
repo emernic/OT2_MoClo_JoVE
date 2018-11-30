@@ -71,6 +71,15 @@ def main():
 			config['rotate'], 
 			config['pixels_per_mm'],
 			plate_origin)
+		if config['draw_previews']:
+			draw_regions(
+				config['temp_folder_path'],
+				plate['image_filename'],
+				plate_location, 
+				config['rotate'], 
+				config['pixels_per_mm'],
+				config['colony_regions'],
+				plate_origin)
 
 	# Selects appropriate colonies for each plasmid based on colony_regions in settings.yaml.
 	culture_blocks_dict = pick_colonies(
@@ -78,7 +87,8 @@ def main():
 		config['colony_regions'], 
 		config['colonies_to_pick'], 
 		config['block_rows'], 
-		config['block_columns'])
+		config['block_columns'],
+		config['calibration_point_location'])
 
 	###### CREATING OUTPUT BLOCK MAPS AND PROTOCOL FILE ######
 	create_block_maps(culture_blocks_dict, config['output_folder_path'])
@@ -237,7 +247,7 @@ def run_opencfu(opencfu_folder_path, image_filenames, arg_string):
 
 	return opencfu_outputs
 
-# Converts OpenCFU output (locations in px coordinates) into mm coordinates relative to origin.
+# converts opencfu output (locations in px coordinates) into mm coordinates relative to origin.
 def get_relative_locations(opencfu_output, plate_location, rotate, pixels_per_mm, plate_origin):
 	relative_locations = []
 	for row in opencfu_output:
@@ -247,8 +257,8 @@ def get_relative_locations(opencfu_output, plate_location, rotate, pixels_per_mm
 
 			translated_x = x - plate_location['x']
 			translated_y = y - plate_location['y']
-			cosine = math.cos(-rotate)
-			sine = math.sin(-rotate)
+			cosine = math.cos(math.radians(rotate))
+			sine = math.sin(math.radians(rotate))
 			rotated_x = translated_x*cosine - translated_y*sine
 			rotated_y = translated_y*cosine + translated_x*sine
 			mm_x = rotated_x / pixels_per_mm
@@ -260,6 +270,24 @@ def get_relative_locations(opencfu_output, plate_location, rotate, pixels_per_mm
 			relative_locations.append({'x': adjusted_x, 'y': adjusted_y})
 
 	return relative_locations
+
+# converts coordinates in mm relative to origin into locations in px coordinates on image
+def get_image_location(x, y, plate_location, rotate, pixels_per_mm, plate_origin):
+	adjusted_x = x + plate_origin['x']
+	adjusted_y = y + plate_origin['y']
+
+	px_x = adjusted_x * pixels_per_mm
+	px_y = adjusted_y * pixels_per_mm
+
+	cosine = math.cos(math.radians(-rotate))
+	sine = math.sin(math.radians(-rotate))
+	rotated_x = px_x*cosine - px_y*sine
+	rotated_y = px_y*cosine + px_x*sine
+
+	translated_x = rotated_x + plate_location['x']
+	translated_y = rotated_y + plate_location['y']
+
+	return (translated_x, translated_y)
 
 # Intakes a list of opencfu outputs (DictReaders) keyed by image filename and draws previews to temp_folder_path.
 def draw_previews(opencfu_outputs, preview_path):
@@ -280,6 +308,38 @@ def draw_previews(opencfu_outputs, preview_path):
 		preview_filename = preview_path + '/preview_' + os.path.basename(image_filename)
 		# Save image preview
 		im.save(preview_filename)
+
+# Draws the colony regions and saves output in temp folder.
+def draw_regions(preview_path, image_filename, plate_location, rotate, pixels_per_mm, colony_regions, plate_origin):
+	# Open source image
+	original = Image.open(image_filename)
+	im = original.copy()
+	draw = ImageDraw.Draw(im)
+
+	# Draw (different for circles vs rectangles)
+	if colony_regions['type'] == 'circle':
+		for i in range(0, colony_regions["rows"]):
+			for j in range(0, colony_regions["columns"]):
+				if colony_regions['type'] == 'circle':
+					mm_x = colony_regions['x'] + j*colony_regions['x_spacing'] - plate_origin['x']
+					mm_y = colony_regions['y'] + i*colony_regions['y_spacing'] - plate_origin['y']
+					px_x, px_y = get_image_location(mm_x, mm_y, plate_location, rotate, pixels_per_mm, plate_origin)
+					px_r = colony_regions['r'] * pixels_per_mm
+					draw.ellipse((px_x-px_r, px_y-px_r, px_x+px_r, px_y+px_r), outline=(255, 0, 0, 255))
+				elif colony_regions['type'] == 'rectangle':
+					mm_x_min = colony_regions['x_1'] + j*colony_regions['x_spacing'] - plate_origin['x']
+					mm_x_max = colony_regions['x_2'] + j*colony_regions['x_spacing'] - plate_origin['x']
+					mm_y_min = colony_regions['y_1'] + i*colony_regions['y_spacing'] - plate_origin['y']
+					mm_y_max = colony_regions['y_2'] + i*colony_regions['y_spacing'] - plate_origin['y']
+					px_x_min, px_y_min = get_image_location(mm_x_min, mm_y_min, plate_location, rotate, pixels_per_mm, plate_origin)
+					px_x_max, px_y_max = get_image_location(mm_x_max, mm_y_max, plate_location, rotate, pixels_per_mm, plate_origin)
+					draw.rectangle([(px_x_min, px_y_min), (px_x_max, px_y_max)], outline=(255, 0, 0, 255))
+				else:
+					raise ValueError('Invalid colony_regions type: {0}'.format(colony_regions['type']))
+
+	# Save
+	preview_filename = preview_path + '/preview_regions_' + os.path.basename(image_filename)
+	im.save(preview_filename)
 
 # Find the minimum distance from other colonies for each colony
 def measure_colony_distances(colony_list):
@@ -308,24 +368,25 @@ def get_plasmid_name(source_plate_filename, row, column):
 	return plasmid_name
 
 # Returns a list of only the colonies which are inside colony region i, j.
-def get_colonies_in_region(colony_locations, colony_regions, i, j):
+def get_colonies_in_region(colony_locations, colony_regions, plate_origin, i, j):
 	colonies_in_region = []
 
 	if colony_regions['type'] == 'circle':
 		for colony in colony_locations:
-			target_x = colony_regions['x'] + j*colony_regions['x_spacing']
-			target_y = colony_regions['y'] + i*colony_regions['y_spacing']
+			target_x = colony_regions['x'] + j*colony_regions['x_spacing'] - plate_origin['x']
+			target_y = colony_regions['y'] + i*colony_regions['y_spacing'] - plate_origin['y']
 			delta_x = colony['x'] - target_x
 			delta_y = colony['y'] - target_y
 			if (delta_x**2 + delta_y**2)**0.5 < colony_regions['r']:
+				print(target_x, target_y, colony['x'], colony['y'])
 				colonies_in_region.append(colony)
 
 	elif colony_regions['type'] == 'rectangle':
 		for colony in colony_locations:
-			x_min = colony_regions['x_1'] + j*colony_regions['x_spacing']
-			x_max = colony_regions['x_2'] + j*colony_regions['x_spacing']
-			y_min = colony_regions['y_1'] + i*colony_regions['y_spacing']
-			y_max = colony_regions['y_2'] + i*colony_regions['y_spacing']
+			x_min = colony_regions['x_1'] + j*colony_regions['x_spacing'] - plate_origin['x']
+			x_max = colony_regions['x_2'] + j*colony_regions['x_spacing'] - plate_origin['x']
+			y_min = colony_regions['y_1'] + i*colony_regions['y_spacing'] - plate_origin['y']
+			y_max = colony_regions['y_2'] + i*colony_regions['y_spacing'] - plate_origin['y']
 			if colony['x'] > x_min and colony['x'] < x_max and colony['y'] > y_min and colony['y'] < y_max:
 				colonies_in_region.append(colony)
 
@@ -360,7 +421,7 @@ def get_colonies_in_region(colony_locations, colony_regions, i, j):
 # 		]
 # 	],
 # }
-def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_columns):
+def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_columns, calibration_point_location):
 	# Tracking output block number, row, and column.
 	n = 0
 	i = 0
@@ -376,7 +437,7 @@ def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_co
 				plasmid_name = get_plasmid_name(plate['source_plate_filename'], row, col)
 
 				if plasmid_name:
-					colonies = get_colonies_in_region(plate['colony_locations'], colony_regions, row, col)
+					colonies = get_colonies_in_region(plate['colony_locations'], colony_regions, calibration_point_location, row, col)
 					colonies_with_distances = measure_colony_distances(colonies)
 					sorted_colonies = sorted(colonies_with_distances, key=lambda c: c['dist'], reverse=True)
 					selected_colonies = sorted_colonies[:colonies_to_pick]
