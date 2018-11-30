@@ -317,25 +317,25 @@ def draw_regions(preview_path, image_filename, plate_location, rotate, pixels_pe
 	draw = ImageDraw.Draw(im)
 
 	# Draw (different for circles vs rectangles)
-	if colony_regions['type'] == 'circle':
-		for i in range(0, colony_regions["rows"]):
-			for j in range(0, colony_regions["columns"]):
-				if colony_regions['type'] == 'circle':
-					mm_x = colony_regions['x'] + j*colony_regions['x_spacing'] - plate_origin['x']
-					mm_y = colony_regions['y'] + i*colony_regions['y_spacing'] - plate_origin['y']
-					px_x, px_y = get_image_location(mm_x, mm_y, plate_location, rotate, pixels_per_mm, plate_origin)
-					px_r = colony_regions['r'] * pixels_per_mm
-					draw.ellipse((px_x-px_r, px_y-px_r, px_x+px_r, px_y+px_r), outline=(255, 0, 0, 255))
-				elif colony_regions['type'] == 'rectangle':
-					mm_x_min = colony_regions['x_1'] + j*colony_regions['x_spacing'] - plate_origin['x']
-					mm_x_max = colony_regions['x_2'] + j*colony_regions['x_spacing'] - plate_origin['x']
-					mm_y_min = colony_regions['y_1'] + i*colony_regions['y_spacing'] - plate_origin['y']
-					mm_y_max = colony_regions['y_2'] + i*colony_regions['y_spacing'] - plate_origin['y']
-					px_x_min, px_y_min = get_image_location(mm_x_min, mm_y_min, plate_location, rotate, pixels_per_mm, plate_origin)
-					px_x_max, px_y_max = get_image_location(mm_x_max, mm_y_max, plate_location, rotate, pixels_per_mm, plate_origin)
-					draw.rectangle([(px_x_min, px_y_min), (px_x_max, px_y_max)], outline=(255, 0, 0, 255))
-				else:
-					raise ValueError('Invalid colony_regions type: {0}'.format(colony_regions['type']))
+	for i in range(0, colony_regions["rows"]):
+		for j in range(0, colony_regions["columns"]):
+			if colony_regions['type'] == 'circle':
+				mm_x = colony_regions['x'] + j*colony_regions['x_spacing'] - plate_origin['x']
+				mm_y = colony_regions['y'] + i*colony_regions['y_spacing'] - plate_origin['y']
+				px_x, px_y = get_image_location(mm_x, mm_y, plate_location, rotate, pixels_per_mm, plate_origin)
+				px_r = colony_regions['r'] * pixels_per_mm
+				draw.ellipse((px_x-px_r, px_y-px_r, px_x+px_r, px_y+px_r), outline=(255, 0, 0, 255))
+			elif colony_regions['type'] == 'rectangle':
+				mm_x_min = colony_regions['x_1'] + j*colony_regions['x_spacing'] - plate_origin['x']
+				mm_x_max = colony_regions['x_2'] + j*colony_regions['x_spacing'] - plate_origin['x']
+				mm_y_min = colony_regions['y_1'] + i*colony_regions['y_spacing'] - plate_origin['y']
+				mm_y_max = colony_regions['y_2'] + i*colony_regions['y_spacing'] - plate_origin['y']
+				px_x_min, px_y_min = get_image_location(mm_x_min, mm_y_min, plate_location, rotate, pixels_per_mm, plate_origin)
+				px_x_max, px_y_max = get_image_location(mm_x_max, mm_y_max, plate_location, rotate, pixels_per_mm, plate_origin)
+				print(px_x_min, px_y_min, px_x_max, px_y_max)
+				draw.rectangle([(px_x_min, px_y_min), (px_x_max, px_y_max)], outline=(255, 0, 0, 255))
+			else:
+				raise ValueError('Invalid colony_regions type: {0}'.format(colony_regions['type']))
 
 	# Save
 	preview_filename = preview_path + '/preview_regions_' + os.path.basename(image_filename)
