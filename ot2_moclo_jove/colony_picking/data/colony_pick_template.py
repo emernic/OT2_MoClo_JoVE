@@ -33,6 +33,19 @@
 from opentrons import robot, instruments, labware
 from opentrons.util.vector import Vector
 
+
+AGAR_PLATE = 'Agar plate calibrated for colony picking'
+try:
+	point_for_colony_picking = labware.create(
+	    AGAR_PLATE,            # name of you container
+	    grid=(1, 1),                    # specify amount of (rows, columns)
+	    spacing=(0, 0),               # distances (mm) between each (row, column)
+	    diameter=0,                     # diameter (mm) of each well on the plate
+	    depth=0,                       # depth (mm) of each well on the plate
+	    volume=0)
+except:
+	print("Using existing labware definition for {0}".format(AGAR_PLATE))
+
 # How far from the calibration point to move the pipette down when picking colonies.
 PLATE_DEPTH = -7
 
