@@ -34,13 +34,13 @@ from opentrons import robot, instruments, labware
 from opentrons.util.vector import Vector
 
 # How far from the calibration point to move the pipette down when picking colonies.
-PLATE_DEPTH = -8.5
+PLATE_DEPTH = -7
 
 available_deck_slots = ['11', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1']
 
 tip_rack = [labware.load('tiprack-10ul', available_deck_slots.pop(), 'tiprack-10ul')]
 
-p = instruments.P10_Single(mount='left', tip_racks=tip_rack)
+p = instruments.P10_Single(mount='right', tip_racks=tip_rack)
 
 culture_block = labware.load('96-deep-well', available_deck_slots.pop(), 'culture_block')
 

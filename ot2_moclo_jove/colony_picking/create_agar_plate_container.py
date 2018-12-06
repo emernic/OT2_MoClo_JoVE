@@ -1,4 +1,4 @@
-# Running this protocol on the app will simply create the container we use for our 8 well agar plates.
+# Running this protocol on the app will simply create the container we use for our agar plates.
 # The OT2 thinks that this container is just a plate with 1 well, which we will use as a calibration reference.
 
 from opentrons import labware

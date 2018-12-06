@@ -378,7 +378,6 @@ def get_colonies_in_region(colony_locations, colony_regions, plate_origin, i, j)
 			delta_x = colony['x'] - target_x
 			delta_y = colony['y'] - target_y
 			if (delta_x**2 + delta_y**2)**0.5 < colony_regions['r']:
-				print(target_x, target_y, colony['x'], colony['y'])
 				colonies_in_region.append(colony)
 
 	elif colony_regions['type'] == 'rectangle':
@@ -447,7 +446,8 @@ def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_co
 							'name': plasmid_name, 
 							'source': '{0}'.format(os.path.splitext(os.path.basename(plate['source_plate_filename']))[0]), 
 							'x': colony['x'],
-							'y': colony['y']
+							##### INVERT COLONY Y FOR LOWER-LEFT-ORIGIN OPENTRONS LABWARE COORDINATE SYSTEM
+							'y': -colony['y']
 						})
 
 						if j == block_columns:
