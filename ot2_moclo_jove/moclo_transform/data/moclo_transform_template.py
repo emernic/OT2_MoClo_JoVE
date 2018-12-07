@@ -1,3 +1,4 @@
+import time
 import math
 
 from opentrons import robot, instruments, labware, modules
@@ -158,9 +159,9 @@ for part, combinations in combinations_by_part.items():
 p10_single.pick_up_tip()
 for i in combinations_to_make:
 	num_parts = len(i["parts"])
-	if num_parts < 5:
-		water_to_add = 10 - 2 * num_parts
-	else:
+	# Start off with extra 2 ul of water for evaporation.
+	water_to_add = 12 - 2 * num_parts
+	if water_to_add < 0:
 		water_to_add = 0
 	well = find_combination(i["name"], combinations_to_make)
 	p10_single.transfer(water_to_add, water.bottom(), well.bottom(0.5), new_tip='never')
@@ -171,36 +172,23 @@ for i in combinations_to_make:
 	p10_single.blow_out()
 p10_single.drop_tip()
 
-cmds = robot.commands()
-cmds_by_type = {}
-for i in cmds:
-	type = i.split()[0]
-	if type in cmds_by_type.keys():
-		cmds_by_type[type] += 1
-	else:
-		cmds_by_type[type] = 1
-print(cmds_by_type)
-
-# Incubate rxns (moclo), periodically adding more water.
-#temp_deck.set_temperature(37)
-#p10_single.delay(minutes=120)
-#temp_deck.set_temperature(50)
-#p10_single.delay(minutes=5)
-#temp_deck.set_temperature(80)
-#p10_single.delay(minutes=10)
-#temp_deck.set_temperature(4)
-
-# Discard majority of rxn volume using multichannel.
-num_cols = math.ceil(num_rxns/8.0)
-p300_multi.pick_up_tip()
-for i in range(0, num_cols):
-	# Split up if too many rxns for one tip
-	if i % 15 == 0 and not i == 0:
-		p300_multi.dispense(300, liquid_waste)
-	p300_multi.aspirate(15, reaction_plate.wells(i*8).bottom(0.5))
-	p300_multi.air_gap(5)
-p300_multi.dispense(300, liquid_waste.bottom())
-p300_multi.drop_tip()
+# Incubate rxns for 2 hr (moclo), adding 4 ul of water halfway through.
+start_time = time.time()
+temp_deck.set_temperature(37)
+p10_single.delay(minutes=60)
+p10_single.pick_up_tip()
+for i in combinations_to_make:
+	num_parts = len(i["parts"])
+	# Add an extra 4 ul of water for evaporation.
+	water_to_add = 4
+	well = find_combination(i["name"], combinations_to_make)
+	p10_single.transfer(water_to_add, water.bottom(), well.bottom(0.5), new_tip='never')
+	p10_single.mix(4, 10, well.bottom(0.5))
+	p10_single.mix(2, 10, wash_0.bottom(0.5))
+	p10_single.blow_out()
+	p10_single.mix(2, 10, wash_1.bottom(0.5))
+	p10_single.blow_out()
+p10_single.drop_tip()
 
 # Add comp cells.
 p300_multi.pick_up_tip()
@@ -212,11 +200,11 @@ for i in range(0, num_cols):
 p300_multi.drop_tip()
 
 # Incubate at 4C, then heat shock.
-#p10_single.delay(minutes=30)
-#temp_deck.set_temperature(42)
-#p10_single.delay(minutes=1)
-#temp_deck.set_temperature(4)
-#p10_single.delay(minutes=5)
+p10_single.delay(minutes=30)
+temp_deck.set_temperature(42)
+p10_single.delay(minutes=1)
+temp_deck.set_temperature(4)
+p10_single.delay(minutes=5)
 
 # Add lb.
 p300_multi.pick_up_tip()
@@ -229,8 +217,8 @@ for i in range(0, num_cols):
 p300_multi.drop_tip()
 
 # Grow for 1 hr, adding water/mixing if necessary.
-#temp_deck.set_temperature(37)
-#p10_single.delay(minutes=60)
+temp_deck.set_temperature(37)
+p10_single.delay(minutes=60)
 
 def spread_culture(source, dest, lb, dilute_after=True):
 	p300_multi.mix(2, 150, source.bottom(0.5))
