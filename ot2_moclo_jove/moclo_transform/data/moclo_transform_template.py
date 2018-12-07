@@ -189,6 +189,8 @@ for i in combinations_to_make:
 	p10_single.mix(2, 10, wash_1.bottom(0.5))
 	p10_single.blow_out()
 p10_single.drop_tip()
+time_elapsed = time.time() - start_time
+p10_single.delay(seconds=(120*60 - time_elapsed))
 
 # Add comp cells.
 p300_multi.pick_up_tip()
