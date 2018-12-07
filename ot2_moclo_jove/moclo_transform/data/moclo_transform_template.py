@@ -18,29 +18,6 @@ except:
 # Multichannel p300, single channel p10
 # This protocol is optimized for maximum walkaway time
 
-import random
-test_part_names = [str(x) for x in range(0, 288)]
-test_plasmid_names = [str(x) for x in range(0, 48)]
-combinations_to_make = []
-for i in test_plasmid_names:
-	combination = {}
-	combination["name"] = i
-	combination["parts"] = [str(random.randint(0, 191)) for x in range(0, 5)]
-	combinations_to_make.append(combination)
-
-def gen_part_plate(offset):
-	plate_map = []
-	for i in range(0, 8):
-		plate_map.append([str(x) for x in range(i*12 + offset, i*12 + offset + 12)])
-	return plate_map
-
-dna_plate_map_dict = {}
-dna_plate_map_dict["plate_0"] = gen_part_plate(0)
-dna_plate_map_dict["plate_1"] = gen_part_plate(96)
-
-#combinations_to_make = [{"name": "final plasmid 1", "parts": ["vector a", "insert 1", "another insert"]}]
-#dna_plate_map_dict = {"dna plate 0": [["vector a", "insert 1", "another insert"]]}
-
 num_rxns = len(combinations_to_make)
 num_plates = math.ceil(num_rxns/24)
 
