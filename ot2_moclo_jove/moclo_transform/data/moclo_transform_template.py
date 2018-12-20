@@ -203,6 +203,7 @@ for i in range(0, num_cols):
 p300_multi.drop_tip()
 
 # Incubate at 4C, then heat shock.
+temp_deck.set_temperature(4)
 p10_single.delay(minutes=30)
 temp_deck.set_temperature(42)
 p10_single.delay(minutes=1)
