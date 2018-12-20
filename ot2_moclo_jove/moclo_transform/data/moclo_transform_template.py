@@ -156,6 +156,7 @@ for part, combinations in combinations_by_part.items():
 			p10_single.blow_out()
 	p10_single.drop_tip()
 
+num_cols = math.ceil(num_rxns/8.0)
 p10_single.pick_up_tip()
 for i in combinations_to_make:
 	num_parts = len(i["parts"])
@@ -195,10 +196,10 @@ p10_single.delay(seconds=(120*60 - time_elapsed))
 # Add comp cells.
 p300_multi.pick_up_tip()
 for i in range(0, num_cols):
-	p300_multi.aspirate(50, comp_cells.wells('A' + str(i + 1)).bottom(0.5))
+	p300_multi.aspirate(20, comp_cells.wells('A' + str(i + 1)).bottom(0.5))
 
 for i in range(0, num_cols):
-	p300_multi.dispense(50, reaction_plate.wells(i*8).bottom(0.5))
+	p300_multi.dispense(20, reaction_plate.wells(i*8).bottom(0.5))
 p300_multi.drop_tip()
 
 # Incubate at 4C, then heat shock.
