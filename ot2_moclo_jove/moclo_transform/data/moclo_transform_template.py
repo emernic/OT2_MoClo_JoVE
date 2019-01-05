@@ -192,18 +192,30 @@ for i in combinations_to_make:
 p10_single.drop_tip()
 time_elapsed = time.time() - start_time
 p10_single.delay(seconds=(120*60 - time_elapsed))
+temp_deck.set_temperature(4)
 
 # Add comp cells.
 p300_multi.pick_up_tip()
 for i in range(0, num_cols):
+	# Using letters for rows of custom container to maintain backwards compatibility.
 	p300_multi.aspirate(20, comp_cells.wells('A' + str(i + 1)).bottom(0.5))
 
 for i in range(0, num_cols):
-	p300_multi.dispense(20, reaction_plate.wells(i*8).bottom(0.5))
+	p300_multi.dispense(20, reaction_plate.wells(48 + i*8).bottom(0.5))
 p300_multi.drop_tip()
 
+# Add 2 ul of rxns to comp cells
+p10_single.pick_up_tip()
+for i in range(0, num_rxns):
+	p10_single.transfer(2, reaction_plate.wells(i).bottom(0.5), reaction_plate.wells(48 + i).bottom(0.5), new_tip='never')
+	p10_single.mix(4, 10, reaction_plate.wells(48 + i).bottom(0.5))
+	p10_single.mix(2, 10, wash_0.bottom(0.5))
+	p10_single.blow_out()
+	p10_single.mix(2, 10, wash_1.bottom(0.5))
+	p10_single.blow_out()
+p10_single.drop_tip()
+
 # Incubate at 4C, then heat shock.
-temp_deck.set_temperature(4)
 p10_single.delay(minutes=30)
 temp_deck.set_temperature(42)
 p10_single.delay(minutes=1)
@@ -213,7 +225,7 @@ p10_single.delay(minutes=5)
 # Add lb.
 p300_multi.pick_up_tip()
 for i in range(0, num_cols):
-	p300_multi.transfer(150, lb.bottom(), reaction_plate.wells(i*8).bottom(1), mix_after=(2, 150), new_tip='never')
+	p300_multi.transfer(150, lb.bottom(), reaction_plate.wells(48 + i * 8).bottom(1), mix_after=(2, 150), new_tip='never')
 	p300_multi.mix(2, 300, wash_0.bottom())
 	p300_multi.blow_out()
 	p300_multi.mix(2, 300, wash_1.bottom())
@@ -242,7 +254,7 @@ for i in range(0, num_cols):
 	agar_plate = agar_plates[i // 3]
 	agar_well_num = (i % 3) * 8 * 4
 	p300_multi.pick_up_tip()
-	source = reaction_plate.wells(i*8)
+	source = reaction_plate.wells(48 + i * 8)
 	spread_culture(source, agar_plate.wells(agar_well_num), lb)
 	spread_culture(source, agar_plate.wells(agar_well_num + 8), lb)
 	spread_culture(source, agar_plate.wells(agar_well_num + 16), lb)

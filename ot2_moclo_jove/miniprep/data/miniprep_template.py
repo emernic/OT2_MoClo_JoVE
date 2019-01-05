@@ -1,17 +1,40 @@
-from opentrons import robot, instruments, labware
+from opentrons import robot, instruments, labware, modules
 
-###############################################################################################
-# TODO: Put in the actual protocol for miniprep once we get magnetic module. This is just copy 
-# pasted from colony picking as an example.We will want to use multichannel extensively!
-###############################################################################################
+available_deck_slots = ['1', '2', '3', '4', '5', '6', '8', '9']
 
-available_deck_slots = ['11', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1']
+tip_racks = [labware.load('tiprack-200ul', available_deck_slots.pop(), 'tiprack-200ul') for x in range(0, 4)]
 
-tip_rack = [labware.load('tiprack-10ul', available_deck_slots.pop(), 'tiprack-10ul')]
+p300 = instruments.P300_Multi(mount='left', tip_racks=tip_racks)
 
-p = instruments.P10_Single(mount='left', tip_racks=tip_rack)
+mag = modules.load("magdeck", "10", share=True)
+samples = labware.load('96-deep-well', "10", 'samples', share=True)
+dest_plate = labware.load("96-PCR-tall", "11", "destination plate")
+buffers = labware.load("trough-12row", "7", "buffers")
+etr_mag = [buffers.wells(0), buffers.wells(1)]
+etr = [buffers.wells(2), buffers.wells(3)]
+vhb = [buffers.wells(4), buffers.wells(5), buffers.wells(6), buffers.wells(7)]
+spm = [buffers.wells(8), buffers.wells(9)]
+eb = buffers.wells(10)
 
-culture_block = labware.load('96-deep-well', available_deck_slots.pop(), 'culture_block')
+#Add 500 킠 ETR and 20 킠 Mag-Bind
+p300.transfer(520, etr_mag.bottom(0.5), 
+#Wait 5 min
+#Magnetize and discard supernatant
+#Demagnetize and add 500 킠 ETR
+#Magnetize and discard supernatant
+#Demagnetize and add 700 킠 VHB
+#Magnetize and discard supernatant
+#Demagnetize and add 700 킠 VHB
+#Magnetize and discard supernatant
+#Demagnetize and aAdd 700 킠 SPM
+#Magnetize and discard supernatant
+#Wait 1 min
+#Discard last bit of supernatant
+#Wait 9 min
+#Demagnetize and add 50-100 킠 Elution Buffer (might be able to add less)
+#Magnetize and remove and save supernatant (which contains dna)
+
+
 
 source_plate_names = []
 for block_name, block_map in culture_blocks_dict.items():
@@ -40,3 +63,5 @@ for block_name, block_map in culture_blocks_dict.items():
 			p.drop_tip()
 
 			i += 1
+
+
