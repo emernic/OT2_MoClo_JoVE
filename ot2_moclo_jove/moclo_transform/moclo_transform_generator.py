@@ -90,7 +90,7 @@ def generate_combinations(combinations_filename):
 			if row[0]:
 				combinations_to_make.append({
 					"name": row[0],
-					"parts": [x for x in row[1:-1] if x]
+					"parts": [x for x in row[1:] if x]
 				})
 	print("combinations_to_make", combinations_to_make)
 	return combinations_to_make
