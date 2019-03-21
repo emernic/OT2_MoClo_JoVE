@@ -141,10 +141,10 @@ def get_image_filenames(image_folder_path, num_images):
 
 def get_background_filenames(background_folder_path):
 	# Background image filenames (optional). If multiple are found they will be averaged.
-        try:
-            os.stat(background_folder_path)
-        except:
-            os.mkdir(background_folder_path)
+	try:
+		os.stat(background_folder_path)
+		except:
+		os.mkdir(background_folder_path)
 
 	return [(background_folder_path + '/' + image_name) for image_name in os.listdir(background_folder_path)]
 
