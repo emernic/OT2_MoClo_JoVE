@@ -451,14 +451,13 @@ def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_co
 							'name': plasmid_name, 
 							'source': '{0}'.format(os.path.splitext(os.path.basename(plate['source_plate_filename']))[0]), 
 							'x': colony['x'],
-							##### INVERT COLONY Y FOR LOWER-LEFT-ORIGIN OPENTRONS LABWARE COORDINATE SYSTEM
+							# INVERT COLONY Y FOR LOWER-LEFT-ORIGIN OPENTRONS LABWARE COORDINATE SYSTEM
 							'y': -colony['y']
 						}
-                                                try:
+						try:
 							culture_blocks_dict['culture_block_{0}'.format(n)][i].append(colony_dict)
-                                                except IndexError:
-							culture_blocks_dict['culture_block_{0}'.format(n)].append([])
-							culture_blocks_dict['culture_block_{0}'.format(n)][i].append(colony_dict)
+						except IndexError:
+							culture_blocks_dict['culture_block_{0}'.format(n)].append([colony_dict])
 
 						if i == block_rows:
 							if j == block_columns:
