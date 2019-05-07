@@ -447,25 +447,28 @@ def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_co
 					selected_colonies = sorted_colonies[:colonies_to_pick]
 
 					for colony in selected_colonies:
-						culture_blocks_dict['culture_block_{0}'.format(n)][i].append({
+						colony_dict = {
 							'name': plasmid_name, 
 							'source': '{0}'.format(os.path.splitext(os.path.basename(plate['source_plate_filename']))[0]), 
 							'x': colony['x'],
 							##### INVERT COLONY Y FOR LOWER-LEFT-ORIGIN OPENTRONS LABWARE COORDINATE SYSTEM
 							'y': -colony['y']
-						})
-
-						if j == block_columns:
-							if i == block_rows:
-								n += 1
-								i = 0
-								culture_blocks_dict['culture_block_{0}'.format(n)] = []
-							else:
-								i += 1
-							j = 0
+						}
+                                                try:
+							culture_blocks_dict['culture_block_{0}'.format(n)][i].append(colony_dict)
+                                                except IndexError:
 							culture_blocks_dict['culture_block_{0}'.format(n)].append([])
+							culture_blocks_dict['culture_block_{0}'.format(n)][i].append(colony_dict)
+
+						if i == block_rows:
+							if j == block_columns:
+								n += 1
+								j = 0
+							else:
+								j += 1
+							i = 0
 						else:
-							j += 1
+							i += 1
 
 	return culture_blocks_dict
 
