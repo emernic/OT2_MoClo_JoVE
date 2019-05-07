@@ -459,8 +459,8 @@ def pick_colonies(plates, colony_regions, colonies_to_pick, block_rows, block_co
 						except IndexError:
 							culture_blocks_dict['culture_block_{0}'.format(n)].append([colony_dict])
 
-						if i == block_rows:
-							if j == block_columns:
+						if i == block_rows - 1:
+							if j == block_columns - 1:
 								n += 1
 								j = 0
 							else:
@@ -484,7 +484,7 @@ def delete_temp_files(temp_folder_path):
 
 def create_block_maps(culture_blocks_dict, output_folder_path):
 	for block_name, block_map in culture_blocks_dict.items():
-		with open(output_folder_path + '/' + '{0}.csv'.format(block_name), 'w+') as block_map_file:
+		with open(output_folder_path + '/' + '{0}.csv'.format(block_name), 'w+', newline="") as block_map_file:
 			writer = csv.writer(block_map_file)
 			for row in block_map:
 				writer.writerow([x['name'] for x in row])

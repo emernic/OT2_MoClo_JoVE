@@ -98,7 +98,7 @@ def add_output_plate_names(plate_maps, output_folder_path):
 
 def save_plate_maps(plate_maps):
 	for plate_map in plate_maps:
-		with open(plate_map['plasmid_plate_name'], 'w+') as plasmid_plate_map_file:
+		with open(plate_map['plasmid_plate_name'], 'w+', newline='') as plasmid_plate_map_file:
 			writer = csv.writer(plasmid_plate_map_file)
 			writer.writerows(plate_map['map'])
 
